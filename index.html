@@ -717,7 +717,20 @@ async function loadMonth(year, month) {
         else dayTanks = Math.ceil(totalTanks / totalDays);
       }
 
-      days[dk].certified.push({ ...info, name, tanks: dayTanks, totalTanks, session, eventId: evt.id });
+      // 團體岸潛：標題含「N人」+「岸潛」→ 人數×趟數，全高氧
+      const isGroupShore = /\d+人/.test(evt.summary||'') && /岸潛/.test(evt.summary||'');
+      let groupPax = 1;
+      let nitroxOverride = info.nitrox;
+      if (isGroupShore) {
+        const pm = (evt.summary||'').match(/(\d+)人/);
+        groupPax = pm ? parseInt(pm[1]) : 1;
+        const dm = (evt.summary||'').match(/岸潛(\d+)/);
+        const diveCount = dm ? parseInt(dm[1]) : 1;
+        dayTanks = groupPax * diveCount;
+        nitroxOverride = true;
+      }
+
+      days[dk].certified.push({ ...info, name, tanks: dayTanks, totalTanks, session, eventId: evt.id, nitrox: nitroxOverride, groupPax });
       d.setDate(d.getDate()+1);
     }
   }
@@ -860,7 +873,8 @@ function renderDayView(dk, days) {
   const airTanks    = day.certified.filter(d=>!d.nitrox).reduce((s,d) => s+(d.tanks||0), 0);
   const totalTanks  = nitroxTanks + airTanks;
   const totalBoatPax = day.boat.reduce((s,b) => s+(b.groupInfo?.personCount||0), 0);
-  const totalDivers = day.certified.length + day.tryDive.length + totalBoatPax;
+  const certPax = day.certified.reduce((s,d) => s + (d.groupPax || 1), 0);
+  const totalDivers = certPax + day.tryDive.length + totalBoatPax;
 
   // Compute equipment stats (certified + try-dive)
   const equipCount = {};
