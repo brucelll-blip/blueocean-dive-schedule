@@ -614,10 +614,14 @@ function getSessionFromBoat(summary) {
   return 'other';
 }
 
-// 船潛高氧氣瓶計算：全天×4、上午或下午×2
+// 船潛高氧氣瓶計算：全天×4、上午或下午×2；團體岸潛：人數×趟數（全高氧）
 function calcBoatNitrox(boatArr) {
   return boatArr.reduce((s, b) => {
     const pax = b.groupInfo?.personCount || 0;
+    if (b.isShore) {
+      // 團體岸潛：每人每趟1支高氧
+      return s + pax * (b.shoreDivesPerPax || 1);
+    }
     const mult = b.session === 'fullday' ? 4
                : (b.session === 'morning' || b.session === 'afternoon') ? 2
                : 0;
@@ -741,7 +745,9 @@ async function loadMonth(year, month) {
     ensureDay(dk);
     const gi = parseGroup(evt, groupMap);
     const session = getSessionFromBoat(evt.summary||'');
-    days[dk].boat.push({ summary: evt.summary, session, groupInfo: gi });
+    const isShore = /岸潛/.test(evt.summary || '');
+    const shoreDivesPerPax = isShore ? (parseInt((evt.summary||'').match(/岸潛(\d+)/)?.[1] || '1')) : 0;
+    days[dk].boat.push({ summary: evt.summary, session, groupInfo: gi, isShore, shoreDivesPerPax });
   }
 
   cache[k] = { data: days, ts: Date.now() };
@@ -816,8 +822,13 @@ function renderGroupCard(boat) {
     : boat.session === 'afternoon' ? '<span class="badge b-afternoon">下午</span>'
     : boat.session === 'fullday' ? '<span class="badge b-fullday">全天</span>' : '';
 
+  const diveTypeBadge = boat.isShore
+    ? '<span class="badge b-shore">岸潛</span>'
+    : '<span class="badge b-boat">船潛</span>';
+  const diveIcon = boat.isShore ? '🏊' : '🚢';
+
   if (!gi) {
-    return `<div class="group-card"><div class="group-title">🚢 ${escHtml(boat.summary)}</div><div class="badges"><span class="badge b-group">團體</span><span class="badge b-boat">船潛</span>${sessBadge}</div></div>`;
+    return `<div class="group-card"><div class="group-title">${diveIcon} ${escHtml(boat.summary)}</div><div class="badges"><span class="badge b-group">團體</span>${diveTypeBadge}${sessBadge}</div></div>`;
   }
 
   const infoRows = [];
@@ -831,9 +842,9 @@ function renderGroupCard(boat) {
 
   return `
 <div class="group-card">
-  <div class="group-title">🚢 ${escHtml(gi.summary || boat.summary)}</div>
+  <div class="group-title">${diveIcon} ${escHtml(gi.summary || boat.summary)}</div>
   ${infoRows.length ? `<div class="info-grid">${infoRows.join('')}</div>` : ''}
-  <div class="badges" style="margin:6px 0;">${'<span class="badge b-group">團體</span><span class="badge b-boat">船潛</span>'}${sessBadge}</div>
+  <div class="badges" style="margin:6px 0;"><span class="badge b-group">團體</span>${diveTypeBadge}${sessBadge}</div>
   ${schedHtml}
 </div>`;
 }
