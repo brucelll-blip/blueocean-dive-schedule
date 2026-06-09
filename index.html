@@ -614,10 +614,20 @@ function getSessionFromBoat(summary) {
   return 'other';
 }
 
+// 從 boat 事件取人數：優先 groupInfo，其次解析標題「N人」
+function getBoatPax(b) {
+  let pax = b.groupInfo?.personCount || 0;
+  if (!pax) {
+    const m = (b.summary||'').match(/(\d+)人/);
+    if (m) pax = parseInt(m[1]);
+  }
+  return pax;
+}
+
 // 船潛高氧氣瓶計算：全天×4、上午或下午×2；團體岸潛：人數×趟數（全高氧）
 function calcBoatNitrox(boatArr) {
   return boatArr.reduce((s, b) => {
-    const pax = b.groupInfo?.personCount || 0;
+    const pax = getBoatPax(b);
     if (b.isShore) {
       // 團體岸潛：每人每趟1支高氧
       return s + pax * (b.shoreDivesPerPax || 1);
@@ -872,7 +882,7 @@ function renderDayView(dk, days) {
   const nitroxTanks = certNitrox + boatNitrox;
   const airTanks    = day.certified.filter(d=>!d.nitrox).reduce((s,d) => s+(d.tanks||0), 0);
   const totalTanks  = nitroxTanks + airTanks;
-  const totalBoatPax = day.boat.reduce((s,b) => s+(b.groupInfo?.personCount||0), 0);
+  const totalBoatPax = day.boat.reduce((s,b) => s+getBoatPax(b), 0);
   const certPax = day.certified.reduce((s,d) => s + (d.groupPax || 1), 0);
   const totalDivers = certPax + day.tryDive.length + totalBoatPax;
 
@@ -940,7 +950,7 @@ function renderDayView(dk, days) {
     const sessNitrox = items.filter(i=>i._t!=='boat'&&i.nitrox).reduce((s,d)=>s+(d.tanks||0), 0);
     const sessAir    = items.filter(i=>i._t!=='boat'&&!i.nitrox).reduce((s,d)=>s+(d.tanks||0), 0);
     const sessTanks  = sessNitrox + sessAir;
-    const sessBoatPax = items.filter(i=>i._t==='boat').reduce((s,b)=>s+(b.groupInfo?.personCount||0), 0);
+    const sessBoatPax = items.filter(i=>i._t==='boat').reduce((s,b)=>s+getBoatPax(b), 0);
     const totalItems = items.length;
 
     html += `<div class="session-section">
