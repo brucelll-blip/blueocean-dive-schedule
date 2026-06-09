@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🤿 藍洋潛水 行程管理</title>
+<style>
+:root {
+  color-scheme: light;
+  --hdr-h: 52px;
+  --subbar-h: 0px;
+  --primary: #0077B6;
+  --primary-dark: #005F8F;
+  --boat: #0096C7;
+  --shore: #2D9E4F;
+  --try: #E07C24;
+  --group: #6B3FA0;
+  --bg: #f0f4f8;
+  --card: #ffffff;
+  --border: #d1dce8;
+  --text: #1a2332;
+  --text-muted: #5a6a7e;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); }
+
+/* ===== API KEY BANNER ===== */
+#apiKeyBanner {
+  background: #fff3cd;
+  border-bottom: 2px solid #f0c040;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+#apiKeyBanner label { font-weight: 700; white-space: nowrap; }
+#apiKeyBanner input {
+  flex: 1; min-width: 220px;
+  padding: 5px 10px; border: 1px solid #d0b020;
+  border-radius: 7px; font-size: 0.85rem;
+  font-family: monospace;
+}
+#apiKeyBanner button {
+  background: var(--primary); color: white;
+  border: none; border-radius: 7px;
+  padding: 6px 14px; font-size: 0.82rem; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+}
+#apiKeyBanner button.clear-btn {
+  background: #e55; padding: 6px 10px; font-size: 0.78rem;
+}
+#apiKeyBanner .hint {
+  width: 100%; color: #7a5800;
+  font-size: 0.75rem; margin-top: 2px;
+}
+#apiKeyBanner.hidden { display: none; }
+
+/* ===== HEADER ===== */
+.header {
+  background: var(--primary);
+  color: white;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.header-title { font-size: 1.05rem; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.date-nav { display: flex; align-items: center; gap: 6px; }
+.nav-btn {
+  background: rgba(255,255,255,0.2);
+  border: none; color: white;
+  padding: 5px 11px; border-radius: 7px;
+  cursor: pointer; font-size: 0.88rem;
+  transition: background 0.15s;
+}
+.nav-btn:hover { background: rgba(255,255,255,0.35); }
+.nav-btn.today-btn { font-size: 0.78rem; padding: 4px 9px; }
+.current-date { font-size: 1rem; font-weight: 600; min-width: 90px; text-align: center; }
+
+/* ===== LAYOUT ===== */
+.app-layout { display: flex; min-height: calc(100vh - 52px); }
+.main-panel {
+  flex: 1; padding: 16px; overflow-y: auto; min-width: 0;
+  height: calc(100vh - var(--hdr-h) - var(--subbar-h));
+}
+.sidebar {
+  width: 300px; flex-shrink: 0;
+  background: var(--card);
+  border-left: 1px solid var(--border);
+  padding: 14px;
+  height: calc(100vh - 52px);
+  position: sticky;
+  top: 52px;
+  overflow-y: auto;
+}
+
+/* ===== STATS BAR ===== */
+.stats-bar {
+  display: flex; gap: 10px; margin-bottom: 14px;
+  position: sticky; top: 0; z-index: 8;
+  background: var(--bg);
+  padding-top: 4px; padding-bottom: 4px;
+  margin-top: -4px;
+}
+.stat-card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 11px 14px;
+  flex: 1;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  min-width: 0;
+}
+.stat-label { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 3px; white-space: nowrap; }
+.stat-value { font-size: 1.5rem; font-weight: 800; color: var(--primary); line-height: 1; }
+.stat-sub { font-size: 0.7rem; color: var(--text-muted); margin-top: 1px; }
+
+/* ===== SESSION SECTIONS ===== */
+.session-section { margin-bottom: 14px; }
+.session-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 12px; border-radius: 9px;
+  margin-bottom: 8px; font-weight: 700; font-size: 0.88rem;
+}
+.sess-morning { background: #fff7e0; color: #8B6000; }
+.sess-afternoon { background: #e3f5ea; color: #1a6b35; }
+.sess-fullday { background: #e0eeff; color: #004f9a; }
+.sess-other { background: #f3eefc; color: #5a1faa; }
+.sess-count {
+  background: rgba(0,0,0,0.1); border-radius: 10px;
+  padding: 1px 7px; font-size: 0.73rem; font-weight: 600;
+}
+.sess-tanks {
+  background: rgba(0,119,182,0.12); border-radius: 10px;
+  padding: 1px 7px; font-size: 0.73rem; font-weight: 600;
+  color: var(--primary);
+}
+
+/* ===== DIVER CARD ===== */
+.diver-card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  border-left: 4px solid var(--shore);
+}
+.diver-card.type-boat { border-left-color: var(--boat); }
+.diver-card.type-try { border-left-color: var(--try); }
+.diver-card.type-group { border-left-color: var(--group); }
+
+.card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 7px; }
+.diver-name { font-weight: 700; font-size: 0.95rem; }
+.badges { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.badge {
+  font-size: 0.67rem; padding: 2px 6px; border-radius: 8px;
+  font-weight: 700; white-space: nowrap;
+}
+.b-cert { background: #dbeafe; color: #1d4ed8; }
+.b-nitrox { background: #dcfce7; color: #166534; }
+.b-shore { background: #d1fae5; color: #065f46; }
+.b-boat { background: #dbeeff; color: #024f8a; }
+.b-try { background: #ffedd5; color: #9a3412; }
+.b-group { background: #ede9fe; color: #5b21b6; }
+.b-morning { background: #fef3c7; color: #92400e; }
+.b-afternoon { background: #cffafe; color: #0e7490; }
+.b-fullday { background: #dcfce7; color: #166534; }
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  gap: 3px 10px;
+  font-size: 0.79rem;
+  margin-bottom: 6px;
+}
+.info-row { display: flex; gap: 3px; align-items: baseline; }
+.il { color: var(--text-muted); flex-shrink: 0; }
+.iv { font-weight: 500; word-break: break-all; }
+
+.body-line {
+  font-size: 0.75rem; color: var(--text-muted);
+  margin-bottom: 5px; padding: 3px 8px;
+  background: #f8f9fb; border-radius: 5px;
+  display: inline-block;
+}
+.tank-row { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+.tank-icons { display: flex; gap: 2px; flex-wrap: wrap; }
+.tank-icon { font-size: 1.1rem; }
+.tank-num { font-weight: 800; color: var(--primary); font-size: 1rem; }
+
+.equip-row {
+  font-size: 0.77rem; color: #374151;
+  background: #f1f5f9; border-radius: 6px;
+  padding: 5px 9px; margin-top: 4px;
+}
+.equip-label { color: var(--text-muted); margin-right: 4px; }
+
+.sched-note {
+  font-size: 0.75rem;
+  border-left: 2px solid #f0c040;
+  padding: 4px 8px;
+  background: #fffbf0;
+  border-radius: 0 5px 5px 0;
+  margin-top: 5px;
+  white-space: pre-wrap;
+}
+
+/* ===== GROUP CARD ===== */
+.group-card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  border-left: 4px solid var(--group);
+}
+.group-title { font-weight: 700; font-size: 0.95rem; color: var(--group); margin-bottom: 8px; }
+
+/* ===== MINI CALENDAR ===== */
+.cal-wrap { margin-bottom: 14px; }
+.cal-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.cal-hdr-title { font-weight: 700; font-size: 0.88rem; }
+.cal-nav-btn {
+  background: none; border: 1px solid var(--border);
+  border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 0.8rem;
+}
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 1px; }
+.cal-dname { text-align: center; font-size: 0.65rem; color: var(--text-muted); padding: 3px 0; font-weight: 700; }
+.cal-d {
+  text-align: center; font-size: 0.75rem;
+  padding: 5px 2px; border-radius: 7px;
+  cursor: pointer; line-height: 1.2;
+  transition: background 0.12s;
+  user-select: none;
+}
+.cal-d:hover { background: #e8f0fe; }
+.cal-d.sel { background: var(--primary); color: white; font-weight: 800; }
+.cal-d.today { font-weight: 800; color: var(--primary); }
+.cal-d.has-e { position: relative; }
+.cal-d.has-e .dot-row { display: flex; justify-content: center; gap: 2px; margin-top: 1px; }
+.dot { width: 4px; height: 4px; border-radius: 50%; display: inline-block; }
+.dot-shore { background: var(--shore); }
+.dot-boat { background: var(--boat); }
+.dot-try { background: var(--try); }
+.cal-d.empty { visibility: hidden; }
+
+/* ===== SIDEBAR STATS ===== */
+.sb-section { margin-bottom: 12px; }
+.sb-title { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.03em; }
+.sb-stat-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; padding: 3px 0; border-bottom: 1px solid #f0f0f0; }
+.sb-stat-row:last-child { border-bottom: none; }
+.sb-val { font-weight: 700; color: var(--primary); }
+
+.tank-visual { display: flex; gap: 3px; flex-wrap: wrap; padding: 6px 0; }
+
+.equip-tbl { width: 100%; border-collapse: collapse; font-size: 0.77rem; }
+.equip-tbl td { padding: 3px 4px; border-bottom: 1px solid #f0f0f0; }
+.equip-tbl td:last-child { text-align: right; font-weight: 700; color: var(--primary); }
+.equip-tbl tr:last-child td { border-bottom: none; }
+
+/* ===== LOADING / EMPTY ===== */
+.loading { text-align: center; padding: 50px 20px; color: var(--text-muted); }
+.spin { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty-day { text-align: center; padding: 50px 20px; color: var(--text-muted); }
+.empty-icon { font-size: 3rem; display: block; margin-bottom: 10px; }
+
+/* ===== MOBILE ===== */
+@media (max-width: 767px) {
+  .sidebar { display: none; }
+  .header-title span.subtitle { display: none; }
+  .stats-bar { gap: 6px; }
+  .stat-value { font-size: 1.25rem; }
+  .stat-label { font-size: 0.65rem; }
+  .mobile-fabs { display: flex !important; }
+  .current-date { font-size: 0.88rem; min-width: 70px; }
+  .main-panel { height: calc(100vh - var(--hdr-h) - var(--subbar-h)); }
+}
+.mobile-fabs {
+  display: none;
+  position: fixed; bottom: 16px; right: 14px; z-index: 100;
+  flex-direction: column; gap: 8px; align-items: flex-end;
+}
+.fab {
+  background: var(--primary); color: white;
+  border: none; border-radius: 24px;
+  padding: 9px 15px; font-size: 0.82rem; font-weight: 700;
+  cursor: pointer; box-shadow: 0 3px 10px rgba(0,119,182,0.4);
+  white-space: nowrap;
+}
+.fab.fab-light {
+  background: white; color: var(--primary);
+  border: 2px solid var(--primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+
+/* ===== MODALS ===== */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; }
+.overlay.open { display: flex; align-items: flex-end; justify-content: center; }
+.sheet {
+  background: var(--card); border-radius: 20px 20px 0 0;
+  padding: 18px 18px 28px; width: 100%; max-width: 480px;
+  max-height: 80vh; overflow-y: auto;
+}
+.sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 14px; }
+.sheet-title { font-size: 1rem; font-weight: 700; margin-bottom: 12px; }
+
+/* ===== MOBILE STAT BUTTON ROW ===== */
+.mobile-stat-row {
+  display: none;
+  background: var(--primary-dark);
+  padding: 7px 12px;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  position: sticky;
+  top: var(--hdr-h);
+  z-index: 40;
+  flex-shrink: 0;
+}
+.mobile-stat-row::-webkit-scrollbar { display: none; }
+.mobile-stat-row button {
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.16);
+  border: none; color: white;
+  border-radius: 8px; padding: 5px 11px;
+  font-size: 0.75rem; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+}
+.mobile-stat-row button:active { background: rgba(255,255,255,0.32); }
+@media (max-width: 767px) {
+  .mobile-stat-row { display: flex; }
+  :root { --subbar-h: 42px; }
+}
+
+/* ===== SEPARATORS ===== */
+.sb-divider { height: 1px; background: var(--border); margin: 12px 0; }
+.stat-period-label {
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.06em;
+  color: var(--primary); background: #e8f4ff;
+  display: inline-block; padding: 2px 8px; border-radius: 6px;
+  margin-bottom: 6px;
+}
+.placeholder-text { color: var(--text-muted); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+
+<!-- API KEY BANNER -->
+<div id="apiKeyBanner">
+  <label>🔑 Google API Key：</label>
+  <input type="text" id="apiKeyInput" placeholder="貼上你的 Google Calendar API Key…" autocomplete="off" spellcheck="false">
+  <button onclick="saveApiKey()">儲存並載入</button>
+  <button class="clear-btn" onclick="clearApiKey()" title="清除已儲存的 API Key">✕</button>
+  <div class="hint">
+    ⚠️ 需要 Google Cloud API Key（啟用 Calendar API），且四個行事曆須設為「公開」。
+    API Key 僅儲存在你的瀏覽器（localStorage），不會傳送至任何伺服器。
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-title">🤿 藍洋潛水行程</div>
+  <div class="date-nav">
+    <button class="nav-btn" onclick="changeDate(-1)">◀</button>
+    <div class="current-date" id="hdDate"></div>
+    <button class="nav-btn" onclick="changeDate(1)">▶</button>
+    <button class="nav-btn today-btn" onclick="goToday()">今日</button>
+  </div>
+</div>
+
+<!-- MOBILE STAT ROW (below header, mobile only) -->
+<div class="mobile-stat-row">
+  <button onclick="openSheet('tank-day')">🔵 氣瓶・當日</button>
+  <button onclick="openSheet('tank-month')">🔵 氣瓶・當月</button>
+  <button onclick="openSheet('equip-day')">🤿 裝備・當日</button>
+  <button onclick="openSheet('equip-month')">🤿 裝備・當月</button>
+</div>
+
+<!-- LAYOUT -->
+<div class="app-layout">
+  <div class="main-panel" id="mainPanel">
+    <div class="loading"><div class="spin"></div>請先設定 Google API Key…</div>
+  </div>
+  <div class="sidebar" id="sidebar">
+    <div class="cal-wrap" id="sidebarCal"></div>
+    <div class="sb-divider"></div>
+    <div class="sb-section">
+      <div class="sb-title">🔵 氣瓶統計</div>
+      <div class="stat-period-label">當日</div>
+      <div id="sbTankDay"><div class="placeholder-text">選擇日期後顯示</div></div>
+      <div class="stat-period-label" style="margin-top:10px">當月</div>
+      <div id="sbTankMonth"><div class="placeholder-text">載入中…</div></div>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-section">
+      <div class="sb-title">🤿 租賃裝備統計</div>
+      <div class="stat-period-label">當日</div>
+      <div id="sbEquipDay"><div class="placeholder-text">選擇日期後顯示</div></div>
+      <div class="stat-period-label" style="margin-top:10px">當月</div>
+      <div id="sbEquipMonth"><div class="placeholder-text">載入中…</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MOBILE FABs (only calendar) -->
+<div class="mobile-fabs">
+  <button class="fab fab-light" onclick="openSheet('cal')">📅 選擇日期</button>
+</div>
+
+<!-- MODAL SHEETS -->
+<div class="overlay" id="overlay" onclick="closeSheet()">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div id="sheetContent"></div>
+  </div>
+</div>
+
+<script>
+// =========================================================
+// GOOGLE CALENDAR API KEY (stored in localStorage)
+// =========================================================
+let API_KEY = localStorage.getItem('blueocean_api_key') || '';
+
+function saveApiKey() {
+  const val = document.getElementById('apiKeyInput').value.trim();
+  if (!val) { alert('請輸入 API Key'); return; }
+  API_KEY = val;
+  localStorage.setItem('blueocean_api_key', val);
+  document.getElementById('apiKeyBanner').classList.add('hidden');
+  cache = {}; // clear cache on key change
+  loadAndRender();
+}
+
+function clearApiKey() {
+  localStorage.removeItem('blueocean_api_key');
+  API_KEY = '';
+  document.getElementById('apiKeyInput').value = '';
+  document.getElementById('apiKeyBanner').classList.remove('hidden');
+  document.getElementById('mainPanel').innerHTML = '<div class="loading"><div class="spin"></div>請先設定 Google API Key…</div>';
+}
+
+// =========================================================
+// CONSTANTS
+// =========================================================
+const CAL_IDS = {
+  boat:      '936bmf7g5mlgj1dpvqrtlqq958@group.calendar.google.com',
+  group:     '75aea8a67de530a4d777a0ded5df21791d3402ec1b9b5e418b325d2f080e102b@group.calendar.google.com',
+  certified: '726199040c583946fd3a8c37155dc58987b5b9a2b25d0af6dfd9b948d0b4751e@group.calendar.google.com',
+  tryDive:   '18ffd7198ab4d0900c820cfbe538e5a5d346014fec3fa40e108886ddbb4eb28b@group.calendar.google.com'
+};
+
+// Equipment expansion
+const EQUIP_PACKS = [
+  { match: '全套輕、重裝（含電腦錶）', items: ['蛙鞋','套鞋','防寒衣','面鏡','配重','BCD','調節器','電腦錶'] },
+  { match: '全套輕、重裝（不含電腦錶）', items: ['蛙鞋','套鞋','防寒衣','面鏡','配重','BCD','調節器'] },
+  { match: '全套輕重裝（含電腦錶）', items: ['蛙鞋','套鞋','防寒衣','面鏡','配重','BCD','調節器','電腦錶'] },
+  { match: '全套輕重裝（不含電腦錶）', items: ['蛙鞋','套鞋','防寒衣','面鏡','配重','BCD','調節器'] },
+  { match: '全套輕重裝不含電腦錶', items: ['蛙鞋','套鞋','防寒衣','面鏡','配重','BCD','調節器'] },
+  { match: '全套輕重裝含電腦錶', items: ['蛙鞋','套鞋','防寒衣','面鏡','配重','BCD','調節器','電腦錶'] },
+];
+
+const EQUIP_ALIAS = {
+  'B.C.D':'BCD','浮力補償裝置':'BCD','調節器':'調節器',
+  '面鏡+呼吸管':'面鏡','浮力袋':'浮力袋','手電筒':'手電筒',
+};
+
+// =========================================================
+// STATE
+// =========================================================
+let today = new Date();
+let selectedDate = new Date(today);
+let viewMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+let cache = {}; // key: "YYYY-M" → { data: {...}, ts: timestamp }
+const CACHE_TTL = 5 * 60 * 1000; // 5 分鐘
+let sheetType = null;
+
+// =========================================================
+// UTILITIES
+// =========================================================
+function dkey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function stripHtml(s) {
+  return (s||'').replace(/<br\s*\/?>/gi,'\n').replace(/<pre[^>]*>/gi,'').replace(/<\/pre>/gi,'').replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#39;/g,"'").replace(/&nbsp;/g,' ');
+}
+
+function parseTanks(summary) {
+  const m = (summary||'').match(/\((\d+)支\)/);
+  return m ? parseInt(m[1]) : 0;
+}
+
+function parseName(summary) {
+  let n = (summary||'').replace(/【[^】]+】/,'').trim();
+  n = n.replace(/\s*\(\d+支\).*$/,'').trim();
+  n = n.replace(/-[早下午上][午]?\s*$/,'').trim();
+  n = n.replace(/^[A-FＡ-Ｆ]\s*/,'').trim();
+  return n;
+}
+
+function expandEquip(raw) {
+  if (!raw || raw.includes('不需要')) return [];
+  for (const p of EQUIP_PACKS) {
+    if (raw.includes(p.match)) return [...p.items];
+  }
+  return raw.split(/[,，]/).map(e => {
+    const t = e.trim();
+    return EQUIP_ALIAS[t] || t;
+  }).filter(Boolean);
+}
+
+// =========================================================
+// PARSERS
+// =========================================================
+function parseCertified(evt) {
+  const desc = stripHtml(evt.description || '');
+  const lines = desc.split('\n').map(l=>l.trim()).filter(l=>l && !l.startsWith('━') && !l.startsWith('─'));
+
+  let lineId='', phone='', cert='', logDives='', nitrox=false;
+  let equipment=[], height='', weight='', shoe='', myopia='';
+  let schedNotes=[];
+
+  for (const line of lines) {
+    if (line.startsWith('Line：') || line.startsWith('LINE：')) {
+      lineId = line.replace(/^LINE?：/i,'').split(/[-－]/)[0].trim();
+    } else if (/^[0-9\+][\d\s\-]{7,}$/.test(line.replace(/\s/,''))) {
+      if (!phone) phone = line.replace(/\s/g,'');
+    } else if (/支.*高氧/.test(line)) {
+      const cm = line.match(/^([A-Z]+)\s+(\d+[\+\w]*)\s*支/i);
+      if (cm) { cert=cm[1].toUpperCase(); logDives=cm[2]; }
+      nitrox = /高氧[：:]\s*是/.test(line);
+    } else if (line.startsWith('裝備：')) {
+      equipment = expandEquip(line.replace('裝備：','').trim());
+    } else if (/^\d{3,}\/\d+\/[\d.]+/.test(line)) {
+      const parts = line.replace(/\s.*/,'').split('/');
+      if (parts.length >= 3) { height=parts[0]; weight=parts[1]; shoe=parts[2]; }
+      const di = line.indexOf(' - ');
+      if (di > -1) myopia = line.substring(di+3).trim().replace(/^\s*-\s*$/,'');
+    } else if (/^6\/\d/.test(line) || /^\d{4}\/\d+\/\d+/.test(line)) {
+      schedNotes.push(line);
+    }
+  }
+  return { lineId, phone, cert, logDives, nitrox, equipment, height, weight, shoe, myopia, schedNotes };
+}
+
+function parseTryDive(evt) {
+  const desc = stripHtml(evt.description || '');
+  const lines = desc.split('\n').map(l=>l.trim()).filter(Boolean);
+  let phone='', lineId='', height='', weight='', shoe='', myopia='';
+  for (const line of lines) {
+    if (/^LINE?：/i.test(line)) {
+      lineId = line.replace(/^LINE?：/i,'').split(/[-－]/)[0].trim();
+    } else if (/^[0-9\+][\d\s\-]{7,}$/.test(line.replace(/\s/,''))) {
+      if (!phone) phone = line.replace(/\s/g,'');
+    } else if (/^\d{3,}\/\d+\/[\d.]+/.test(line)) {
+      const parts = line.replace(/\s.*/,'').split('/');
+      if (parts.length >= 3) { height=parts[0]; weight=parts[1]; shoe=parts[2]; }
+      const di = line.indexOf(' - ');
+      if (di > -1) myopia = line.substring(di+3).trim().replace(/^\s*-\s*$/,'');
+    }
+  }
+  const sum = evt.summary || '';
+  const name = sum.replace(/【體驗】/,'').replace(/-[早下上午]+.*$/,'').trim();
+  const session = /早上|上午/.test(sum) ? 'morning' : /下午/.test(sum) ? 'afternoon' : 'other';
+  // 體驗者固定使用全套輕重裝（不含電腦錶）
+  const fullGear = ['蛙鞋','套鞋','防寒衣','面鏡','配重','BCD','調節器'];
+  return { name, phone, lineId, height, weight, shoe, myopia, session, cert:'體驗', nitrox:false, tanks:1, equipment:fullGear };
+}
+
+function parseGroup(boatEvt, groupMap) {
+  const bTitle = boatEvt.summary || '';
+  let ge = null;
+  for (const [k, g] of Object.entries(groupMap)) {
+    const gt = g.summary.replace(/【團體】/,'').trim();
+    if (bTitle.includes(gt.split(/\d/)[0].trim()) || gt.split(/\d/)[0].trim() && bTitle.includes(gt.split(/\d/)[0].trim())) {
+      ge = g; break;
+    }
+    // fuzzy: first 3 chars
+    const fc = gt.substring(0,3);
+    if (fc.length >= 2 && bTitle.includes(fc)) { ge = g; break; }
+  }
+  if (!ge) return null;
+
+  const desc = stripHtml(ge.description || '');
+  const lines = desc.split('\n').map(l=>l.trim()).filter(l=>l && !l.startsWith('━'));
+  let contact='', contactLine='', phone='';
+  let schedNotes=[];
+
+  for (const line of lines) {
+    if (line.startsWith('聯絡人：')) {
+      const p = line.replace('聯絡人：','').split(/[,，]/);
+      contact = p[0].trim();
+      if (p[1]) contactLine = p[1].trim();
+    } else if (/^[0-9\+][\d\s\-]{7,}$/.test(line.replace(/\s/,''))) {
+      if (!phone) phone = line.replace(/\s/g,'');
+    } else if (/^6\/\d/.test(line) || /^\d{4}\/\d+\/\d+/.test(line) || line.startsWith('2026/')) {
+      schedNotes.push(line);
+    }
+  }
+  const cnt = (bTitle.match(/(\d+)人/) || [])[1];
+  return { summary: ge.summary, contact, contactLine, phone, personCount: cnt ? parseInt(cnt) : 0, schedNotes };
+}
+
+function getSessionFromBoat(summary) {
+  if (/早上|上午/.test(summary)) return 'morning';
+  if (/下午/.test(summary)) return 'afternoon';
+  if (/全天/.test(summary)) return 'fullday';
+  return 'other';
+}
+
+// 船潛高氧氣瓶計算：全天×4、上午或下午×2
+function calcBoatNitrox(boatArr) {
+  return boatArr.reduce((s, b) => {
+    const pax = b.groupInfo?.personCount || 0;
+    const mult = b.session === 'fullday' ? 4
+               : (b.session === 'morning' || b.session === 'afternoon') ? 2
+               : 0;
+    return s + pax * mult;
+  }, 0);
+}
+
+// =========================================================
+// DATA LOADING — Google Calendar API (standalone, no Cowork)
+// =========================================================
+async function fetchCal(calId, start, end) {
+  if (!API_KEY) throw new Error('尚未設定 Google API Key，請在頂部輸入欄位填入');
+  const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calId)}/events`);
+  url.searchParams.set('key', API_KEY);
+  url.searchParams.set('timeMin', start);
+  url.searchParams.set('timeMax', end);
+  url.searchParams.set('singleEvents', 'true');
+  url.searchParams.set('maxResults', '250');
+  url.searchParams.set('orderBy', 'startTime');
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    const msg = err?.error?.message || `HTTP ${response.status}`;
+    if (response.status === 400) throw new Error(`API Key 格式錯誤：${msg}`);
+    if (response.status === 403) throw new Error(`API Key 無效或行事曆未設為公開：${msg}`);
+    if (response.status === 404) throw new Error(`找不到行事曆（ID 錯誤？）：${msg}`);
+    throw new Error(`Google Calendar API 錯誤：${msg}`);
+  }
+  const data = await response.json();
+  return data.items || [];   // Google API 回傳 "items"（非 "events"）
+}
+
+async function loadMonth(year, month) {
+  const k = `${year}-${month}`;
+  if (cache[k] && (Date.now() - cache[k].ts < CACHE_TTL)) return cache[k].data;
+
+  const s = `${year}-${String(month+1).padStart(2,'0')}-01T00:00:00+08:00`;
+  const ed = new Date(year, month+1, 1);
+  const e = `${ed.getFullYear()}-${String(ed.getMonth()+1).padStart(2,'0')}-01T00:00:00+08:00`;
+
+  const [boatEvts, grpEvts, certEvts, tryEvts] = await Promise.all([
+    fetchCal(CAL_IDS.boat, s, e),
+    fetchCal(CAL_IDS.group, s, e),
+    fetchCal(CAL_IDS.certified, s, e),
+    fetchCal(CAL_IDS.tryDive, s, e),
+  ]);
+
+  // Build group map
+  const groupMap = {};
+  for (const g of grpEvts) groupMap[g.id] = g;
+
+  // Build day map
+  const days = {};
+  function ensureDay(dk) {
+    if (!days[dk]) days[dk] = { certified:[], tryDive:[], boat:[] };
+  }
+
+  // Certified divers
+  for (const evt of certEvts) {
+    if (!evt.start) continue;
+    if ((evt.summary||'').includes('取消')) continue;
+    const startD = (evt.start.date || evt.start.dateTime||'').substring(0,10);
+    const endD   = (evt.end.date   || evt.end.dateTime||'').substring(0,10);
+    const totalDays = Math.max(1, Math.round((new Date(endD+'T00:00:00') - new Date(startD+'T00:00:00')) / 86400000));
+    const totalTanks = parseTanks(evt.summary);
+    const info = parseCertified(evt);
+    const name = parseName(evt.summary);
+    const descStr = stripHtml(evt.description||'');
+
+    let d = new Date(startD+'T00:00:00');
+    const endDt = new Date(endD+'T00:00:00');
+
+    while (d < endDt) {
+      const dk = dkey(d);
+      ensureDay(dk);
+      const mmd = `${d.getMonth()+1}/${d.getDate()}`;
+
+      // Determine session for this day
+      let session = 'other';
+      let dayTanks = 0;
+
+      for (const line of descStr.split('\n')) {
+        const l = line.trim();
+        if (!l) continue;
+        if (l.includes(mmd) || totalDays === 1) {
+          if (/全天/.test(l)) { session = 'fullday'; const tm = l.match(/(\d+)\s*[趟隻支]/); if(tm) dayTanks=parseInt(tm[1]); break; }
+          if (/下午/.test(l)) { session = 'afternoon'; const tm = l.match(/(\d+)\s*[趟隻支]/); if(tm) dayTanks=parseInt(tm[1]); break; }
+          if (/早上|上午/.test(l)) { session = 'morning'; const tm = l.match(/(\d+)\s*[趟隻支]/); if(tm) dayTanks=parseInt(tm[1]); break; }
+        }
+      }
+      if (!dayTanks) {
+        if (totalDays === 1) dayTanks = totalTanks;
+        else dayTanks = Math.ceil(totalTanks / totalDays);
+      }
+
+      days[dk].certified.push({ ...info, name, tanks: dayTanks, totalTanks, session, eventId: evt.id });
+      d.setDate(d.getDate()+1);
+    }
+  }
+
+  // Try dive
+  for (const evt of tryEvts) {
+    if (!evt.start) continue;
+    const startD = (evt.start.date || evt.start.dateTime||'').substring(0,10);
+    const endD   = (evt.end.date   || evt.end.dateTime||'').substring(0,10);
+    const info = parseTryDive(evt);
+    let d = new Date(startD+'T00:00:00');
+    const endDt = new Date(endD+'T00:00:00');
+    while (d < endDt) {
+      const dk = dkey(d);
+      ensureDay(dk);
+      days[dk].tryDive.push({ ...info });
+      d.setDate(d.getDate()+1);
+    }
+  }
+
+  // Boat events
+  for (const evt of boatEvts) {
+    if (!evt.start) continue;
+    const dk = (evt.start.date || evt.start.dateTime||'').substring(0,10);
+    ensureDay(dk);
+    const gi = parseGroup(evt, groupMap);
+    const session = getSessionFromBoat(evt.summary||'');
+    days[dk].boat.push({ summary: evt.summary, session, groupInfo: gi });
+  }
+
+  cache[k] = { data: days, ts: Date.now() };
+  return days;
+}
+
+// =========================================================
+// RENDERING
+// =========================================================
+function renderTankIcons(n, nitrox) {
+  if (n <= 0) return '<span style="color:var(--text-muted);font-size:0.8rem">—</span>';
+  const icon = nitrox ? '🟢' : '⚪';
+  const label = nitrox
+    ? '<span style="font-size:0.7rem;font-weight:700;color:#166534;background:#dcfce7;border-radius:6px;padding:1px 6px;margin-left:4px">高氧</span>'
+    : '<span style="font-size:0.7rem;font-weight:700;color:#374151;background:#f3f4f6;border-radius:6px;padding:1px 6px;margin-left:4px">空氣</span>';
+  const icons = Array.from({length: Math.min(n, 12)}, () => `<span class="tank-icon">${icon}</span>`).join('');
+  const extra = n > 12 ? `<span style="font-size:0.8rem;color:var(--primary)">+${n-12}</span>` : '';
+  return `<div class="tank-row"><span class="tank-num">${n}支</span>${label}<div class="tank-icons">${icons}${extra}</div></div>`;
+}
+
+function renderEquipBadges(eq) {
+  if (!eq || eq.length === 0) return '';
+  const clean = eq.filter(e => e && e !== '-' && e.length > 0);
+  if (!clean.length) return '';
+  return `<div class="equip-row"><span class="equip-label">🎽</span>${clean.join('・')}</div>`;
+}
+
+function renderBodyLine(h, w, sh, myopia) {
+  const parts = [];
+  if (h) parts.push(`${h}cm`);
+  if (w) parts.push(`${w}kg`);
+  if (sh) parts.push(`鞋${sh}`);
+  if (myopia) parts.push(`近視${myopia}`);
+  if (!parts.length) return '';
+  return `<span class="body-line">📏 ${parts.join(' / ')}</span>`;
+}
+
+function renderDiverCard(d, type) {
+  const certBadge = d.cert ? `<span class="badge b-cert">${d.cert}</span>` : '';
+  const nitroxBadge = d.nitrox ? `<span class="badge b-nitrox">⚗ 高氧</span>` : '';
+  const typeBadge = type === 'shore' ? '<span class="badge b-shore">岸潛</span>'
+    : type === 'try' ? '<span class="badge b-try">體驗</span>'
+    : '<span class="badge b-boat">船潛</span>';
+
+  const infoRows = [];
+  if (d.phone) infoRows.push(`<div class="info-row"><span class="il">📞</span><span class="iv">${d.phone}</span></div>`);
+  if (d.lineId) infoRows.push(`<div class="info-row"><span class="il">LINE：</span><span class="iv">${d.lineId}</span></div>`);
+  if (d.logDives && d.cert !== '體驗') infoRows.push(`<div class="info-row"><span class="il">記錄：</span><span class="iv">${d.logDives}支</span></div>`);
+
+  const bodyLine = renderBodyLine(d.height, d.weight, d.shoe, d.myopia);
+  const equipHtml = renderEquipBadges(d.equipment);
+  const schedHtml = d.schedNotes && d.schedNotes.length
+    ? `<div class="sched-note">📋 ${d.schedNotes.slice(0,4).join('\n')}</div>` : '';
+
+  return `
+<div class="diver-card type-${type === 'shore' ? 'shore' : type === 'try' ? 'try' : 'boat'}">
+  <div class="card-top">
+    <div class="diver-name">${escHtml(d.name || '—')}</div>
+    <div class="badges">${typeBadge}${certBadge}${nitroxBadge}</div>
+  </div>
+  ${infoRows.length ? `<div class="info-grid">${infoRows.join('')}</div>` : ''}
+  ${bodyLine}
+  ${renderTankIcons(d.tanks, d.nitrox)}
+  ${equipHtml}
+  ${schedHtml}
+</div>`;
+}
+
+function renderGroupCard(boat) {
+  const gi = boat.groupInfo;
+  const sessBadge = boat.session === 'morning' ? '<span class="badge b-morning">上午</span>'
+    : boat.session === 'afternoon' ? '<span class="badge b-afternoon">下午</span>'
+    : boat.session === 'fullday' ? '<span class="badge b-fullday">全天</span>' : '';
+
+  if (!gi) {
+    return `<div class="group-card"><div class="group-title">🚢 ${escHtml(boat.summary)}</div><div class="badges"><span class="badge b-group">團體</span><span class="badge b-boat">船潛</span>${sessBadge}</div></div>`;
+  }
+
+  const infoRows = [];
+  if (gi.personCount) infoRows.push(`<div class="info-row"><span class="il">人數：</span><span class="iv" style="font-weight:800;font-size:1rem">${gi.personCount}人</span></div>`);
+  if (gi.contact) infoRows.push(`<div class="info-row"><span class="il">聯絡：</span><span class="iv">${escHtml(gi.contact)}</span></div>`);
+  if (gi.phone) infoRows.push(`<div class="info-row"><span class="il">📞</span><span class="iv">${gi.phone}</span></div>`);
+  if (gi.contactLine) infoRows.push(`<div class="info-row"><span class="il">LINE：</span><span class="iv">${escHtml(gi.contactLine)}</span></div>`);
+
+  const schedHtml = gi.schedNotes && gi.schedNotes.length
+    ? `<div class="sched-note">📋 ${gi.schedNotes.slice(0,4).map(escHtml).join('\n')}</div>` : '';
+
+  return `
+<div class="group-card">
+  <div class="group-title">🚢 ${escHtml(gi.summary || boat.summary)}</div>
+  ${infoRows.length ? `<div class="info-grid">${infoRows.join('')}</div>` : ''}
+  <div class="badges" style="margin:6px 0;">${'<span class="badge b-group">團體</span><span class="badge b-boat">船潛</span>'}${sessBadge}</div>
+  ${schedHtml}
+</div>`;
+}
+
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function renderDayView(dk, days) {
+  const day = days[dk] || { certified:[], tryDive:[], boat:[] };
+
+  const certNitrox  = day.certified.filter(d=>d.nitrox).reduce((s,d) => s+(d.tanks||0), 0);
+  const boatNitrox  = calcBoatNitrox(day.boat);
+  const nitroxTanks = certNitrox + boatNitrox;
+  const airTanks    = day.certified.filter(d=>!d.nitrox).reduce((s,d) => s+(d.tanks||0), 0);
+  const totalTanks  = nitroxTanks + airTanks;
+  const totalBoatPax = day.boat.reduce((s,b) => s+(b.groupInfo?.personCount||0), 0);
+  const totalDivers = day.certified.length + day.tryDive.length + totalBoatPax;
+
+  // Compute equipment stats (certified + try-dive)
+  const equipCount = {};
+  for (const d of [...day.certified, ...day.tryDive]) {
+    for (const e of (d.equipment||[])) {
+      if (e) equipCount[e] = (equipCount[e]||0) + 1;
+    }
+  }
+
+  // Update sidebar
+  updateSidebarStats(nitroxTanks, airTanks, equipCount);
+
+  // Group by session
+  function bySess(arr, key='session') {
+    const g = { morning:[], afternoon:[], fullday:[], other:[] };
+    for (const x of arr) { const s=x[key]||'other'; (g[s]||g.other).push(x); }
+    return g;
+  }
+  const cSess = bySess(day.certified);
+  const tSess = bySess(day.tryDive);
+  const bSess = bySess(day.boat);
+
+  let html = `
+<div class="stats-bar">
+  <div class="stat-card">
+    <div class="stat-label">今日潛客</div>
+    <div class="stat-value">${totalDivers}</div>
+    <div class="stat-sub">人</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">氣瓶需求（散客＋船潛）</div>
+    <div class="stat-value">${totalTanks}</div>
+    <div class="stat-sub" style="display:flex;gap:8px;flex-wrap:wrap">
+      <span style="color:#166534">🟢高氧 ${nitroxTanks}支</span>
+      <span style="color:#374151">⚪空氣 ${airTanks}支</span>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">岸/船/體驗</div>
+    <div class="stat-value">${day.certified.length}/${totalBoatPax}/${day.tryDive.length}</div>
+    <div class="stat-sub">人</div>
+  </div>
+</div>`;
+
+  const sessConfig = [
+    { key:'morning', label:'🌅 上午', cls:'sess-morning' },
+    { key:'afternoon', label:'☀️ 下午', cls:'sess-afternoon' },
+    { key:'fullday', label:'🌊 全天', cls:'sess-fullday' },
+    { key:'other', label:'📌 其他', cls:'sess-other' },
+  ];
+
+  let anyEvent = false;
+
+  for (const sess of sessConfig) {
+    const items = [
+      ...cSess[sess.key].map(d => ({...d, _t:'shore'})),
+      ...tSess[sess.key].map(d => ({...d, _t:'try'})),
+      ...bSess[sess.key].map(b => ({...b, _t:'boat'})),
+    ];
+    if (!items.length) continue;
+    anyEvent = true;
+
+    const sessNitrox = items.filter(i=>i._t!=='boat'&&i.nitrox).reduce((s,d)=>s+(d.tanks||0), 0);
+    const sessAir    = items.filter(i=>i._t!=='boat'&&!i.nitrox).reduce((s,d)=>s+(d.tanks||0), 0);
+    const sessTanks  = sessNitrox + sessAir;
+    const sessBoatPax = items.filter(i=>i._t==='boat').reduce((s,b)=>s+(b.groupInfo?.personCount||0), 0);
+    const totalItems = items.length;
+
+    html += `<div class="session-section">
+<div class="session-header ${sess.cls}">
+  <span>${sess.label}</span>
+  <span class="sess-count">${totalItems}項${sessBoatPax ? ` | ${sessBoatPax}人` : ''}</span>
+  ${sessNitrox > 0 ? `<span class="sess-tanks" style="background:rgba(22,101,52,0.12);color:#166534">🟢${sessNitrox}</span>` : ''}
+  ${sessAir > 0 ? `<span class="sess-tanks" style="background:rgba(55,65,81,0.1);color:#374151">⚪${sessAir}</span>` : ''}
+</div>`;
+
+    for (const item of items) {
+      if (item._t === 'boat') html += renderGroupCard(item);
+      else html += renderDiverCard(item, item._t);
+    }
+    html += '</div>';
+  }
+
+  if (!anyEvent) {
+    html += `<div class="empty-day"><span class="empty-icon">🏖️</span><div>今日無排程活動</div></div>`;
+  }
+
+  return html;
+}
+
+// ── build tank HTML block ──────────────────────────────────
+function tankHtml(nitrox, air) {
+  const total = nitrox + air;
+  if (total === 0) return '<div class="placeholder-text">無氣瓶需求</div>';
+  const ni = Array.from({length:Math.min(nitrox,12)},()=>'🟢').join('') + (nitrox>12?`<small>+${nitrox-12}</small>`:'');
+  const ai = Array.from({length:Math.min(air,12)},()=>'⚪').join('') + (air>12?`<small>+${air-12}</small>`:'');
+  return `
+<div class="sb-stat-row"><span>合計</span><span class="sb-val">${total} 支</span></div>
+<div class="sb-stat-row"><span>🟢 高氧</span><span class="sb-val" style="color:#166534">${nitrox} 支</span></div>
+${nitrox>0?`<div style="font-size:1rem;line-height:1.5;padding:2px 0 4px">${ni}</div>`:''}
+<div class="sb-stat-row"><span>⚪ 空氣</span><span class="sb-val" style="color:#374151">${air} 支</span></div>
+${air>0?`<div style="font-size:1rem;line-height:1.5;padding:2px 0 2px">${ai}</div>`:''}`;
+}
+
+// ── build equipment HTML block ─────────────────────────────
+function equipHtml(equipCount, emptyMsg) {
+  const rows = Object.entries(equipCount).sort((a,b)=>b[1]-a[1]);
+  if (!rows.length) return `<div class="placeholder-text">${emptyMsg}</div>`;
+  return `<table class="equip-tbl">${rows.map(([k,v])=>`<tr><td>${escHtml(k)}</td><td>${v}件</td></tr>`).join('')}</table>`;
+}
+
+// ── aggregate stats for a whole month from cache ──────────
+function computeMonthStats(year, month) {
+  const ck = `${year}-${month}`;
+  const days = (cache[ck] && cache[ck].data) || {};
+  let nitrox=0, air=0;
+  const equip = {};
+  for (const dk of Object.keys(days)) {
+    const day = days[dk];
+    nitrox += day.certified.filter(d=>d.nitrox).reduce((s,d)=>s+(d.tanks||0),0);
+    nitrox += calcBoatNitrox(day.boat);
+    air    += day.certified.filter(d=>!d.nitrox).reduce((s,d)=>s+(d.tanks||0),0);
+    for (const d of [...day.certified, ...day.tryDive]) {
+      for (const e of (d.equipment||[])) {
+        if (e) equip[e] = (equip[e]||0) + 1;
+      }
+    }
+  }
+  return { nitrox, air, equip };
+}
+
+function updateSidebarStats(nitroxTanks, airTanks, equipCount) {
+  // Daily
+  document.getElementById('sbTankDay').innerHTML  = tankHtml(nitroxTanks, airTanks);
+  document.getElementById('sbEquipDay').innerHTML = equipHtml(equipCount, '今日無租借裝備');
+
+  // Monthly
+  const y = viewMonth.getFullYear(), m = viewMonth.getMonth();
+  const ms = computeMonthStats(y, m);
+  document.getElementById('sbTankMonth').innerHTML  = tankHtml(ms.nitrox, ms.air);
+  document.getElementById('sbEquipMonth').innerHTML = equipHtml(ms.equip, '本月無租借裝備');
+}
+
+// =========================================================
+// MINI CALENDAR
+// =========================================================
+function renderMiniCal(containerId, y, m, days, selDk, onSelect) {
+  const MONTHS = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+  const container = document.getElementById(containerId);
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const firstDay = new Date(y, m, 1).getDay();
+  const todayDk = dkey(today);
+
+  let calHtml = `
+<div class="cal-hdr">
+  <button class="cal-nav-btn" onclick="changeMonth(-1)">◀</button>
+  <span class="cal-hdr-title">${y}年 ${MONTHS[m]}</span>
+  <button class="cal-nav-btn" onclick="changeMonth(1)">▶</button>
+</div>
+<div class="cal-grid">`;
+
+  ['日','一','二','三','四','五','六'].forEach(d => {
+    calHtml += `<div class="cal-dname">${d}</div>`;
+  });
+
+  for (let i=0; i<firstDay; i++) calHtml += '<div class="cal-d empty">.</div>';
+
+  for (let d=1; d<=daysInMonth; d++) {
+    const dk = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayData = days[dk];
+    const hasCert = dayData?.certified?.length > 0;
+    const hasTry  = dayData?.tryDive?.length > 0;
+    const hasBoat = dayData?.boat?.length > 0;
+    const hasAny  = hasCert || hasTry || hasBoat;
+    const total   = (dayData?.certified?.length||0) + (dayData?.tryDive?.length||0) + (dayData?.boat?.length||0);
+
+    let cls = 'cal-d';
+    if (dk === selDk) cls += ' sel';
+    else if (dk === todayDk) cls += ' today';
+    if (hasAny) cls += ' has-e';
+
+    const dots = [];
+    if (hasCert) dots.push('<span class="dot dot-shore"></span>');
+    if (hasBoat) dots.push('<span class="dot dot-boat"></span>');
+    if (hasTry)  dots.push('<span class="dot dot-try"></span>');
+
+    const dotsHtml = dots.length ? `<div class="dot-row">${dots.join('')}</div>` : '';
+    const totalHtml = total > 0 ? `<div style="font-size:0.6rem;color:var(--text-muted);line-height:1">${total}</div>` : '';
+
+    calHtml += `<div class="${cls}" onclick="${onSelect}(${y},${m},${d})">${d}${dotsHtml}${totalHtml}</div>`;
+  }
+
+  calHtml += '</div>';
+  container.innerHTML = calHtml;
+}
+
+// =========================================================
+// MOBILE SHEET
+// =========================================================
+function openSheet(type) {
+  sheetType = type;
+  const content = document.getElementById('sheetContent');
+  const year = viewMonth.getFullYear();
+  const month = viewMonth.getMonth();
+  const days = (cache[`${year}-${month}`] && cache[`${year}-${month}`].data) || {};
+  const selDk = dkey(selectedDate);
+  const MONTHS = ['一','二','三','四','五','六','七','八','九','十','十一','十二'];
+
+  if (type === 'cal') {
+    content.innerHTML = `<div class="sheet-title">📅 選擇日期</div><div id="mobileCalContainer"></div>`;
+    document.getElementById('overlay').classList.add('open');
+    renderMiniCal('mobileCalContainer', year, month, days, selDk, 'selectDateAndClose');
+  } else if (type === 'tank-day') {
+    const label = `${selectedDate.getMonth()+1}/${selectedDate.getDate()}`;
+    content.innerHTML = `<div class="sheet-title">🔵 氣瓶統計・當日（${label}）</div>` + document.getElementById('sbTankDay').innerHTML;
+    document.getElementById('overlay').classList.add('open');
+  } else if (type === 'tank-month') {
+    content.innerHTML = `<div class="sheet-title">🔵 氣瓶統計・${MONTHS[month]}月</div>` + document.getElementById('sbTankMonth').innerHTML;
+    document.getElementById('overlay').classList.add('open');
+  } else if (type === 'equip-day') {
+    const label = `${selectedDate.getMonth()+1}/${selectedDate.getDate()}`;
+    content.innerHTML = `<div class="sheet-title">🤿 裝備統計・當日（${label}）</div>` + document.getElementById('sbEquipDay').innerHTML;
+    document.getElementById('overlay').classList.add('open');
+  } else if (type === 'equip-month') {
+    content.innerHTML = `<div class="sheet-title">🤿 裝備統計・${MONTHS[month]}月</div>` + document.getElementById('sbEquipMonth').innerHTML;
+    document.getElementById('overlay').classList.add('open');
+  }
+}
+
+function closeSheet() { document.getElementById('overlay').classList.remove('open'); }
+
+function selectDateAndClose(y, mo, d) {
+  selectDate(y, mo, d);
+  closeSheet();
+}
+
+// =========================================================
+// NAVIGATION
+// =========================================================
+function selectDate(y, mo, d) {
+  selectedDate = new Date(y, mo, d);
+  viewMonth = new Date(y, mo, 1);
+  refresh();
+}
+
+function changeDate(delta) {
+  selectedDate = new Date(selectedDate.getTime() + delta * 86400000);
+  viewMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+  refresh();
+}
+
+function changeMonth(delta) {
+  viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()+delta, 1);
+  const ck = `${viewMonth.getFullYear()}-${viewMonth.getMonth()}`;
+  if (!cache[ck] || !cache[ck].data) {
+    loadAndRender();
+  } else {
+    renderCalendars();
+    if (sheetType === 'cal' && document.getElementById('mobileCalContainer')) {
+      const days = (cache[ck] && cache[ck].data) || {};
+      renderMiniCal('mobileCalContainer', viewMonth.getFullYear(), viewMonth.getMonth(), days, dkey(selectedDate), 'selectDateAndClose');
+    }
+  }
+}
+
+function goToday() {
+  selectedDate = new Date(today);
+  viewMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  refresh();
+}
+
+function renderCalendars() {
+  const y = viewMonth.getFullYear();
+  const m = viewMonth.getMonth();
+  const ck = `${y}-${m}`;
+  const days = (cache[ck] && cache[ck].data) || {};
+  const selDk = dkey(selectedDate);
+  renderMiniCal('sidebarCal', y, m, days, selDk, 'selectDate');
+}
+
+async function refresh() {
+  const y = viewMonth.getFullYear();
+  const m = viewMonth.getMonth();
+  const dk = dkey(selectedDate);
+
+  // Update header date
+  const wd = ['日','一','二','三','四','五','六'];
+  document.getElementById('hdDate').textContent = `${selectedDate.getMonth()+1}/${selectedDate.getDate()}（${wd[selectedDate.getDay()]}）`;
+
+  const ck = `${y}-${m}`;
+  if (!cache[ck] || !cache[ck].data) {
+    document.getElementById('mainPanel').innerHTML = `<div class="loading"><div class="spin"></div>載入中…</div>`;
+    try {
+      await loadMonth(y, m);
+    } catch(e) {
+      document.getElementById('mainPanel').innerHTML = `<div class="empty-day"><span class="empty-icon">⚠️</span>載入失敗<br><small style="color:var(--text-muted)">${escHtml(e.message)}</small></div>`;
+      return;
+    }
+  }
+
+  const days = (cache[ck] && cache[ck].data) || {};
+  document.getElementById('mainPanel').innerHTML = renderDayView(dk, days);
+  renderCalendars();
+}
+
+async function loadAndRender() {
+  const y = viewMonth.getFullYear();
+  const m = viewMonth.getMonth();
+  document.getElementById('mainPanel').innerHTML = `<div class="loading"><div class="spin"></div>載入中…</div>`;
+  try {
+    await loadMonth(y, m);
+    const dk = dkey(selectedDate);
+    const days = (cache[`${y}-${m}`] && cache[`${y}-${m}`].data) || {};
+    document.getElementById('mainPanel').innerHTML = renderDayView(dk, days);
+    renderCalendars();
+  } catch(e) {
+    document.getElementById('mainPanel').innerHTML = `<div class="empty-day"><span class="empty-icon">⚠️</span>載入失敗<br><small style="color:var(--text-muted)">${escHtml(e.message)}</small></div>`;
+  }
+}
+
+// =========================================================
+// INIT
+// =========================================================
+(function init() {
+  const wd = ['日','一','二','三','四','五','六'];
+  document.getElementById('hdDate').textContent = `${selectedDate.getMonth()+1}/${selectedDate.getDate()}（${wd[selectedDate.getDay()]}）`;
+
+  if (API_KEY) {
+    // Key already saved — hide banner and load
+    document.getElementById('apiKeyBanner').classList.add('hidden');
+    loadAndRender();
+    // 每 5 分鐘自動清 cache 並重新載入目前月份
+    setInterval(() => {
+      const y = viewMonth.getFullYear();
+      const m = viewMonth.getMonth();
+      delete cache[`${y}-${m}`];
+      loadAndRender();
+    }, CACHE_TTL);
+  } else {
+    // Show banner, pre-fill if anything in input
+    document.getElementById('mainPanel').innerHTML =
+      '<div class="empty-day"><span class="empty-icon">🔑</span><div>請在上方輸入 Google API Key 後按「儲存並載入」</div></div>';
+    renderCalendars();
+  }
+})();
+</script>
+</body>
+</html>
