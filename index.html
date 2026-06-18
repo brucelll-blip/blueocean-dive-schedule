@@ -883,7 +883,13 @@ function renderDayView(dk, days) {
   const airTanks    = day.certified.filter(d=>!d.nitrox).reduce((s,d) => s+(d.tanks||0), 0);
   const totalTanks  = nitroxTanks + airTanks;
   const totalBoatPax = day.boat.reduce((s,b) => s+getBoatPax(b), 0);
-  const certPax = day.certified.reduce((s,d) => s + (d.groupPax || 1), 0);
+  // 散客併船已含在 boatPax，僅計岸潛（groupPax>1）或無船潛時段的散客
+  const boatSessions = new Set(day.boat.map(b => b.session));
+  const certPax = day.certified.reduce((s,d) => {
+    if (d.groupPax > 1) return s + d.groupPax;       // 團體岸潛，獨立計算
+    if (boatSessions.has(d.session)) return s;        // 併船散客，已含在 boatPax
+    return s + 1;                                     // 純岸潛散客
+  }, 0);
   const totalDivers = certPax + day.tryDive.length + totalBoatPax;
 
   // Compute equipment stats (certified + try-dive)
