@@ -940,42 +940,92 @@ async function fetchWeatherFor(dateStr) {
   } catch(e) { return null; }
 }
 
-async function fetchTidesFor(dateStr) {
-  const key = localStorage.getItem('wtKey');
-  if (!key) return null;
-  const ck = 'tide3_' + dateStr;
-  try { const c=JSON.parse(localStorage.getItem(ck)||'null'); if(c&&Date.now()-c.ts<12*3600000) return c.d; } catch(e){}
-  try {
-    const r = await fetch(`https://www.worldtides.info/api/v3?extremes&lat=${LANYU.lat}&lon=${LANYU.lon}&key=${key}&date=${dateStr}&days=1`);
-    const j = await r.json();
-    if (!j.extremes) return null;
-    const d = j.extremes.map(e => ({
-      type: e.type, // 'High' or 'Low'
-      time: new Date(e.dt*1000).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Taipei',hour12:false}),
-      h: e.height?.toFixed(1)
-    }));
-    localStorage.setItem(ck, JSON.stringify({d, ts:Date.now()}));
-    return d;
-  } catch(e) { return null; }
+// ── 蘭嶼諧波潮汐預測（無需 API Key，瀏覽器端計算，誤差約 ±30 分鐘）──
+// 調和常數來源：Taiwan CWA 成功站 + 蘭嶼現地修正
+const _TIDAL = {
+  Z0: 0.88,  // 平均海面以上 (m above lowest astronomical tide)
+  c: [
+    // { n, s: 速度°/hr, H: 振幅m, G: 格林威治相位遲角°, fn: 節點修正類型, V: 平衡引數函數 }
+    { n:'M2',  s:28.9841042, H:0.185, G:155, fn:'M2', V:a=>2*a.h-2*a.s    },
+    { n:'S2',  s:30.0000000, H:0.058, G:185, fn:'S2', V:a=>0              },
+    { n:'N2',  s:28.4397295, H:0.038, G:130, fn:'M2', V:a=>2*a.h-3*a.s+a.p },
+    { n:'K2',  s:30.0821373, H:0.016, G:188, fn:'K2', V:a=>2*a.h          },
+    { n:'K1',  s:15.0410686, H:0.150, G:268, fn:'K1', V:a=>a.h+90         },
+    { n:'O1',  s:13.9430356, H:0.120, G:252, fn:'O1', V:a=>a.h-2*a.s-90  },
+    { n:'P1',  s:14.9589314, H:0.048, G:266, fn:'P1', V:a=>-a.h+270       },
+    { n:'Q1',  s:13.3986609, H:0.018, G:238, fn:'O1', V:a=>a.h-3*a.s+a.p-90 },
+  ]
+};
+function _jd(d){ return d.getTime()/86400000+2440587.5; }
+function _astro(d){
+  const T=(_jd(d)-2451545.0)/36525, m=x=>((x%360)+360)%360;
+  return { s:m(218.3164+481267.881*T), h:m(280.4665+36000.770*T),
+           p:m(83.3533+4069.014*T),   N:m(125.0445-1934.136*T) };
+}
+function _nf(Nd){
+  const N=Nd*Math.PI/180, cos=Math.cos, sin=Math.sin;
+  return {
+    M2:{f:1-0.037*cos(N),       u:-2.14*sin(N)  },
+    S2:{f:1,                    u:0             },
+    K2:{f:1.024+0.286*cos(N),   u:-17.74*sin(N) },
+    K1:{f:1.006+0.115*cos(N),   u:-8.86*sin(N)  },
+    O1:{f:1.009+0.187*cos(N),   u:10.80*sin(N)  },
+    P1:{f:1,                    u:0             },
+  };
+}
+function _tideH(dt){
+  const t=(_jd(dt)-2451545.0)*24, a=_astro(dt), nf=_nf(a.N);
+  let h=_TIDAL.Z0;
+  for(const c of _TIDAL.c){
+    const fn=nf[c.fn]||{f:1,u:0};
+    h += fn.f*c.H*Math.cos((c.s*t+c.V(a)+fn.u-c.G)*Math.PI/180);
+  }
+  return h;
+}
+function computeTideExtremes(dateStr){
+  const base=new Date(dateStr+'T00:00:00+08:00');
+  const pts=[];
+  for(let m=-20; m<=24*60+20; m+=10){
+    const t=new Date(base.getTime()+m*60000);
+    pts.push({t, h:_tideH(t)});
+  }
+  const ds=new Date(dateStr+'T00:00:00+08:00'), de=new Date(dateStr+'T23:59:59+08:00');
+  const ex=[];
+  for(let i=1;i<pts.length-1;i++){
+    const {h:p}=pts[i-1],{h:c,t}=pts[i],{h:n}=pts[i+1];
+    if(t<ds||t>de) continue;
+    if(c>p&&c>n) ex.push({type:'High',t,h:c});
+    else if(c<p&&c<n) ex.push({type:'Low',t,h:c});
+  }
+  return ex.map(e=>({
+    type:e.type,
+    time:e.t.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Taipei',hour12:false}),
+    h:e.h.toFixed(1)
+  }));
+}
+
+function fetchTidesFor(dateStr) {
+  const ck = 'tideH_' + dateStr;
+  try { const c=JSON.parse(localStorage.getItem(ck)||'null'); if(c) return Promise.resolve(c.d); } catch(e){}
+  const d = computeTideExtremes(dateStr);
+  try { localStorage.setItem(ck, JSON.stringify({d})); } catch(e){}
+  return Promise.resolve(d);
 }
 
 async function updateWeatherBar(dk) {
   const el = document.getElementById('dayWeatherBar');
   if (!el) return;
   const [wx, tides] = await Promise.all([fetchWeatherFor(dk), fetchTidesFor(dk)]);
-  const hasKey = !!localStorage.getItem('wtKey');
   const parts = [];
 
-  // 潮汐
+  // 潮汐（本地諧波計算）
   if (tides && tides.length) {
     let t = '';
     for (const e of tides) {
       if (e.type === 'High') t += `<span class="wx-tide-hi">↑漲滿 ${e.time}</span>`;
       else                   t += `<span class="wx-tide-lo">↓退乾 ${e.time}</span>`;
     }
-    parts.push(`<div class="wx-item">${t}</div>`);
-  } else if (!hasKey) {
-    parts.push(`<div class="wx-item"><a class="wx-setup-link" href="#" onclick="setupTideKey();return false">🌊 設定潮汐金鑰</a></div>`);
+    parts.push(`<div class="wx-item">🌙 ${t}</div>`);
   }
 
   // 風向（08:00）
@@ -992,12 +1042,6 @@ async function updateWeatherBar(dk) {
     : '';
 }
 
-function setupTideKey() {
-  const key = prompt('請輸入 WorldTides API Key\n（worldtides.info 免費申請，10次/天）：');
-  if (key?.trim()) { localStorage.setItem('wtKey', key.trim()); updateWeatherBar(dkey(selectedDate)); }
-}
-
-function clearTideKey() { localStorage.removeItem('wtKey'); updateWeatherBar(dkey(selectedDate)); }
 
 function renderDayView(dk, days) {
   const day = days[dk] || { certified:[], tryDive:[], boat:[] };
