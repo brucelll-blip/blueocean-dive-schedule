@@ -1070,7 +1070,9 @@ function renderDayView(dk, days) {
   const certNitrox  = day.certified.filter(d=>d.nitrox).reduce((s,d) => s+(d.tanks||0), 0);
   const boatNitrox  = calcBoatNitrox(day.boat);
   const nitroxTanks = certNitrox + boatNitrox;
-  const airTanks    = day.certified.filter(d=>!d.nitrox).reduce((s,d) => s+(d.tanks||0), 0);
+  const certAir     = day.certified.filter(d=>!d.nitrox).reduce((s,d) => s+(d.tanks||0), 0);
+  const tryAir      = day.tryDive.reduce((s,d) => s+(d.tanks||0), 0);
+  const airTanks    = certAir + tryAir;
   const totalTanks  = nitroxTanks + airTanks;
   const totalBoatPax = day.boat.reduce((s,b) => s+getBoatPax(b), 0);
   // 散客併船已含在 boatPax，僅計岸潛（groupPax>1）或無船潛時段的散客
@@ -1204,6 +1206,7 @@ function computeMonthStats(year, month) {
     nitrox += day.certified.filter(d=>d.nitrox).reduce((s,d)=>s+(d.tanks||0),0);
     nitrox += calcBoatNitrox(day.boat);
     air    += day.certified.filter(d=>!d.nitrox).reduce((s,d)=>s+(d.tanks||0),0);
+    air    += day.tryDive.reduce((s,d)=>s+(d.tanks||0),0);
     for (const d of [...day.certified, ...day.tryDive]) {
       for (const e of (d.equipment||[])) {
         if (e) equip[e] = (equip[e]||0) + 1;
