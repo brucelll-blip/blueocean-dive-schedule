@@ -103,7 +103,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC
 /* ===== STATS BAR ===== */
 .stats-bar {
   display: flex; gap: 10px; margin-bottom: 14px;
-  position: sticky; top: 0; z-index: 8;
+  position: sticky; top: var(--wx-bar-h, 42px); z-index: 8;
   background: var(--bg);
   padding-top: 4px; padding-bottom: 4px;
   margin-top: -4px;
@@ -339,11 +339,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC
 }
 
 /* ===== WEATHER BAR ===== */
+#dayWeatherBar {
+  position: sticky; top: 0; z-index: 9;
+  background: var(--bg); padding-bottom: 4px; margin-bottom: 0;
+}
 .weather-bar {
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
   background: linear-gradient(135deg,#e8f4ff,#f0faff);
   border: 1px solid #b8d8f0; border-radius: 10px;
-  padding: 7px 14px; margin-bottom: 10px;
+  padding: 7px 14px; margin-bottom: 6px;
   font-size: 0.82rem; color: #1a3550;
 }
 .wx-item { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
@@ -1005,11 +1009,22 @@ function computeTideExtremes(dateStr){
 }
 
 function fetchTidesFor(dateStr) {
-  const ck = 'tideH_' + dateStr;
-  try { const c=JSON.parse(localStorage.getItem(ck)||'null'); if(c) return Promise.resolve(c.d); } catch(e){}
+  const ck = 'tideH2_' + dateStr;
+  try { const c=JSON.parse(localStorage.getItem(ck)||'null'); if(c&&c.d&&c.d.length>=2) return Promise.resolve(c.d); } catch(e){}
   const d = computeTideExtremes(dateStr);
   try { localStorage.setItem(ck, JSON.stringify({d})); } catch(e){}
   return Promise.resolve(d);
+}
+
+function tidePower(extremes) {
+  if (!extremes || !extremes.length) return '';
+  const highs = extremes.filter(e=>e.type==='High').map(e=>parseFloat(e.h));
+  const lows  = extremes.filter(e=>e.type==='Low').map(e=>parseFloat(e.h));
+  if (!highs.length || !lows.length) return '';
+  const range = Math.max(...highs) - Math.min(...lows);
+  if (range >= 0.62) return '<span style="color:#c0392b;font-weight:800">大潮</span>';
+  if (range <= 0.32) return '<span style="color:#2980b9;font-weight:800">小潮</span>';
+  return '<span style="color:#8e44ad;font-weight:800">中潮</span>';
 }
 
 async function updateWeatherBar(dk) {
@@ -1018,14 +1033,15 @@ async function updateWeatherBar(dk) {
   const [wx, tides] = await Promise.all([fetchWeatherFor(dk), fetchTidesFor(dk)]);
   const parts = [];
 
-  // 潮汐（本地諧波計算）
+  // 潮汐（本地諧波計算）+ 大/中/小潮
   if (tides && tides.length) {
-    let t = '';
+    const power = tidePower(tides);
+    let t = power ? power + ' &nbsp;' : '';
     for (const e of tides) {
-      if (e.type === 'High') t += `<span class="wx-tide-hi">↑漲滿 ${e.time}</span>`;
-      else                   t += `<span class="wx-tide-lo">↓退乾 ${e.time}</span>`;
+      if (e.type === 'High') t += `<span class="wx-tide-hi">↑${e.time}</span> `;
+      else                   t += `<span class="wx-tide-lo">↓${e.time}</span> `;
     }
-    parts.push(`<div class="wx-item">🌙 ${t}</div>`);
+    parts.push(`<div class="wx-item">🌊 ${t.trim()}</div>`);
   }
 
   // 風向（08:00）
@@ -1040,6 +1056,11 @@ async function updateWeatherBar(dk) {
   el.innerHTML = parts.length
     ? `<div class="weather-bar">${parts.join('<span class="wx-sep">・</span>')}</div>`
     : '';
+  // 更新 stats-bar 的 sticky top，讓它緊接在天氣列下方
+  requestAnimationFrame(() => {
+    const h = el.offsetHeight;
+    if (h > 0) document.documentElement.style.setProperty('--wx-bar-h', h + 'px');
+  });
 }
 
 
