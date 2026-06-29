@@ -924,27 +924,23 @@ function degToCompass(d) {
   return c[Math.round(((d%360)+360)%360/45)%8];
 }
 
-// Windguru 風格：彩色星號強度（1–5顆，顏色由綠→黃→橙→紅）
+// 三級星號強度：藍=輕、黃=中、紅=強
 function _starsHtml(n, color) {
   const filled = `<span style="color:${color};letter-spacing:-1px">${'★'.repeat(n)}</span>`;
-  const empty  = n < 5 ? `<span style="color:#ccc;letter-spacing:-1px">${'★'.repeat(5-n)}</span>` : '';
+  const empty  = n < 3 ? `<span style="color:#ccc;letter-spacing:-1px">${'★'.repeat(3-n)}</span>` : '';
   return filled + empty;
 }
 function windStarsHtml(ms) {
   if (ms == null) return '';
-  if (ms < 3)  return _starsHtml(1,'#29b6f6');   // 微風 blue
-  if (ms < 6)  return _starsHtml(2,'#66bb6a');   // 輕風 green
-  if (ms < 10) return _starsHtml(3,'#ffca28');   // 和風 yellow
-  if (ms < 15) return _starsHtml(4,'#ff7043');   // 強風 orange
-  return           _starsHtml(5,'#e53935');       // 烈風 red
+  if (ms < 6)  return _starsHtml(1,'#29b6f6');   // 輕風 blue
+  if (ms < 12) return _starsHtml(2,'#ffca28');   // 中風 yellow
+  return           _starsHtml(3,'#e53935');       // 強風 red
 }
 function waveStarsHtml(m) {
   if (m == null) return '';
-  if (m < 0.3) return _starsHtml(1,'#29b6f6');   // 平靜 blue
-  if (m < 0.7) return _starsHtml(2,'#66bb6a');   // 小浪 green
-  if (m < 1.2) return _starsHtml(3,'#ffca28');   // 中浪 yellow
-  if (m < 2.0) return _starsHtml(4,'#ff7043');   // 大浪 orange
-  return           _starsHtml(5,'#e53935');       // 巨浪 red
+  if (m < 0.7) return _starsHtml(1,'#29b6f6');   // 小浪 blue
+  if (m < 1.5) return _starsHtml(2,'#ffca28');   // 中浪 yellow
+  return           _starsHtml(3,'#e53935');       // 大浪 red
 }
 function dirArrow(deg) {
   // 箭頭朝向來源方向（氣象慣例：風/浪從哪邊來）
