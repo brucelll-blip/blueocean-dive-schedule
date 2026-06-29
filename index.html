@@ -791,11 +791,32 @@ function renderTankIcons(n, nitrox) {
   return `<div class="tank-row"><span class="tank-num">${n}支</span>${label}<div class="tank-icons">${icons}${extra}</div></div>`;
 }
 
+const FULL_SET_BASE = ['蛙鞋','套鞋','防寒衣','面鏡','配重','BCD','調節器'];
+const FULL_SET_WITH_CPU = [...FULL_SET_BASE, '電腦錶'];
+
 function renderEquipBadges(eq) {
   if (!eq || eq.length === 0) return '';
   const clean = eq.filter(e => e && e !== '-' && e.length > 0);
   if (!clean.length) return '';
-  return `<div class="equip-row"><span class="equip-label">🎽</span>${clean.join('・')}</div>`;
+
+  // 偵測全套輕重裝
+  const setHas = (set) => set.every(i => clean.includes(i));
+  const extras = (set) => clean.filter(i => !set.includes(i));
+
+  let label = null;
+  if (setHas(FULL_SET_WITH_CPU)) {
+    label = '全套輕重裝含電腦錶';
+    const ex = extras(FULL_SET_WITH_CPU);
+    if (ex.length) label += '・' + ex.join('・');
+  } else if (setHas(FULL_SET_BASE)) {
+    label = '全套輕重裝不含電腦錶';
+    const ex = extras(FULL_SET_BASE);
+    if (ex.length) label += '・' + ex.join('・');
+  } else {
+    label = clean.join('・');
+  }
+
+  return `<div class="equip-row"><span class="equip-label">🎽</span>${label}</div>`;
 }
 
 function renderBodyLine(h, w, sh, myopia) {
