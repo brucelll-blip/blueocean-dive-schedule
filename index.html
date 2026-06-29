@@ -338,6 +338,23 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC
   :root { --subbar-h: 42px; }
 }
 
+/* ===== WEATHER BAR ===== */
+.weather-bar {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  background: linear-gradient(135deg,#e8f4ff,#f0faff);
+  border: 1px solid #b8d8f0; border-radius: 10px;
+  padding: 7px 14px; margin-bottom: 10px;
+  font-size: 0.82rem; color: #1a3550;
+}
+.wx-item { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.wx-sep { color: #a0b8cc; padding: 0 3px; }
+.wx-tide-hi { color: #0077B6; font-weight: 800; margin-right: 4px; }
+.wx-tide-lo { color: #5a8aaa; font-weight: 800; margin-right: 4px; }
+.wx-arrow { font-size: 1rem; line-height: 1; display: inline-block; }
+.wx-loading { color: #5a6a7e; font-size: 0.78rem; }
+.wx-setup-link { color: #0077B6; text-decoration: none; }
+.wx-setup-link:hover { text-decoration: underline; }
+
 /* ===== SEPARATORS ===== */
 .sb-divider { height: 1px; background: var(--border); margin: 12px 0; }
 .stat-period-label {
@@ -895,6 +912,93 @@ function renderGroupCard(boat) {
 
 function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+// ===== WEATHER & TIDE =====
+const LANYU = { lat: 22.0478, lon: 121.5456 };
+
+function degToCompass(d) {
+  const c = ['北','東北','東','東南','南','西南','西','西北'];
+  return c[Math.round(((d%360)+360)%360/45)%8];
+}
+function dirArrow(deg) {
+  // 箭頭朝向來源方向（氣象慣例：風/浪從哪邊來）
+  return `<span class="wx-arrow" style="display:inline-block;transform:rotate(${deg}deg)">↑</span>`;
+}
+
+async function fetchWeatherFor(dateStr) {
+  const ck = 'wx3_' + dateStr;
+  try { const c=JSON.parse(localStorage.getItem(ck)||'null'); if(c&&Date.now()-c.ts<3*3600000) return c.d; } catch(e){}
+  try {
+    const [wr, mr] = await Promise.all([
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LANYU.lat}&longitude=${LANYU.lon}&hourly=wind_speed_10m,wind_direction_10m&timezone=Asia%2FTaipei&start_date=${dateStr}&end_date=${dateStr}`).then(r=>r.json()),
+      fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${LANYU.lat}&longitude=${LANYU.lon}&hourly=wave_height,wave_direction&timezone=Asia%2FTaipei&start_date=${dateStr}&end_date=${dateStr}`).then(r=>r.json())
+    ]);
+    const i = 8; // 08:00 的值
+    const d = { ws: wr.hourly?.wind_speed_10m?.[i], wd: wr.hourly?.wind_direction_10m?.[i],
+                 wh: mr.hourly?.wave_height?.[i],    wv: mr.hourly?.wave_direction?.[i] };
+    localStorage.setItem(ck, JSON.stringify({d, ts:Date.now()}));
+    return d;
+  } catch(e) { return null; }
+}
+
+async function fetchTidesFor(dateStr) {
+  const key = localStorage.getItem('wtKey');
+  if (!key) return null;
+  const ck = 'tide3_' + dateStr;
+  try { const c=JSON.parse(localStorage.getItem(ck)||'null'); if(c&&Date.now()-c.ts<12*3600000) return c.d; } catch(e){}
+  try {
+    const r = await fetch(`https://www.worldtides.info/api/v3?extremes&lat=${LANYU.lat}&lon=${LANYU.lon}&key=${key}&date=${dateStr}&days=1`);
+    const j = await r.json();
+    if (!j.extremes) return null;
+    const d = j.extremes.map(e => ({
+      type: e.type, // 'High' or 'Low'
+      time: new Date(e.dt*1000).toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Taipei',hour12:false}),
+      h: e.height?.toFixed(1)
+    }));
+    localStorage.setItem(ck, JSON.stringify({d, ts:Date.now()}));
+    return d;
+  } catch(e) { return null; }
+}
+
+async function updateWeatherBar(dk) {
+  const el = document.getElementById('dayWeatherBar');
+  if (!el) return;
+  const [wx, tides] = await Promise.all([fetchWeatherFor(dk), fetchTidesFor(dk)]);
+  const hasKey = !!localStorage.getItem('wtKey');
+  const parts = [];
+
+  // 潮汐
+  if (tides && tides.length) {
+    let t = '';
+    for (const e of tides) {
+      if (e.type === 'High') t += `<span class="wx-tide-hi">↑漲滿 ${e.time}</span>`;
+      else                   t += `<span class="wx-tide-lo">↓退乾 ${e.time}</span>`;
+    }
+    parts.push(`<div class="wx-item">${t}</div>`);
+  } else if (!hasKey) {
+    parts.push(`<div class="wx-item"><a class="wx-setup-link" href="#" onclick="setupTideKey();return false">🌊 設定潮汐金鑰</a></div>`);
+  }
+
+  // 風向（08:00）
+  if (wx?.wd != null) {
+    parts.push(`<div class="wx-item">💨 ${dirArrow(wx.wd)} ${degToCompass(wx.wd)} ${wx.ws?.toFixed(1)} m/s</div>`);
+  }
+  // 浪向（08:00）
+  if (wx?.wv != null) {
+    parts.push(`<div class="wx-item">🌊 ${dirArrow(wx.wv)} ${degToCompass(wx.wv)} ${wx.wh?.toFixed(1)} m</div>`);
+  }
+
+  el.innerHTML = parts.length
+    ? `<div class="weather-bar">${parts.join('<span class="wx-sep">・</span>')}</div>`
+    : '';
+}
+
+function setupTideKey() {
+  const key = prompt('請輸入 WorldTides API Key\n（worldtides.info 免費申請，10次/天）：');
+  if (key?.trim()) { localStorage.setItem('wtKey', key.trim()); updateWeatherBar(dkey(selectedDate)); }
+}
+
+function clearTideKey() { localStorage.removeItem('wtKey'); updateWeatherBar(dkey(selectedDate)); }
+
 function renderDayView(dk, days) {
   const day = days[dk] || { certified:[], tryDive:[], boat:[] };
 
@@ -935,6 +1039,7 @@ function renderDayView(dk, days) {
   const bSess = bySess(day.boat);
 
   let html = `
+<div id="dayWeatherBar"><div class="weather-bar wx-loading">⏳ 載入天氣…</div></div>
 <div class="stats-bar">
   <div class="stat-card">
     <div class="stat-label">今日潛客</div>
@@ -1214,6 +1319,7 @@ async function refresh() {
 
   const days = (cache[ck] && cache[ck].data) || {};
   document.getElementById('mainPanel').innerHTML = renderDayView(dk, days);
+  updateWeatherBar(dk);
   renderCalendars();
 }
 
