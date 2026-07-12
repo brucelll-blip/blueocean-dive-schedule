@@ -1400,7 +1400,9 @@ function openSheet(type) {
     content.innerHTML = `<div class="sheet-title">🤿 裝備統計・${MONTHS[month]}月</div>` + document.getElementById('sbEquipMonth').innerHTML;
     document.getElementById('overlay').classList.add('open');
   } else if (type === 'pax-month') {
-    content.innerHTML = `<div class="sheet-title">👥 人數統計・${MONTHS[month]}月</div>` + document.getElementById('sbPaxMonth').innerHTML;
+    const _y = viewMonth.getFullYear(), _m = viewMonth.getMonth();
+    const _ms = computeMonthStats(_y, _m);
+    content.innerHTML = `<div class="sheet-title">👥 人數統計・${MONTHS[month]}月</div>` + paxHtml(_ms.shore, _ms.tryDive);
     document.getElementById('overlay').classList.add('open');
   }
 }
