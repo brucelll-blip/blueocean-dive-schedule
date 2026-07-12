@@ -1038,6 +1038,28 @@ function fetchTidesFor(dateStr) {
   return Promise.resolve(d);
 }
 
+function lunarDate(dateStr) {
+  const dt = dateStr ? new Date(dateStr + 'T12:00:00+08:00') : new Date();
+  const jd = _jd(dt);
+  const knownNM = 2451550.760;
+  const syn = 29.53058867;
+  const age = ((jd - knownNM) % syn + syn) % syn;
+  const nmN = Math.floor((jd - knownNM) / syn);
+  const day = Math.floor(age) + 1;
+  const NM = {
+    310:'正月',311:'二月',312:'三月',313:'四月',314:'五月',315:'六月',
+    316:'閏六月',317:'七月',318:'八月',319:'九月',320:'十月',321:'十一月',322:'十二月',
+    323:'正月',324:'二月',325:'三月',326:'四月',327:'五月',328:'六月',
+    329:'七月',330:'八月',331:'九月',332:'十月',333:'十一月',334:'十二月',
+    335:'正月',336:'二月',337:'三月',338:'四月',339:'五月',340:'六月',
+    341:'七月',342:'八月',343:'九月',344:'十月',345:'十一月',346:'十二月'
+  };
+  const D=['初一','初二','初三','初四','初五','初六','初七','初八','初九','初十',
+    '十一','十二','十三','十四','十五','十六','十七','十八','十九','二十',
+    '廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十'];
+  return (NM[nmN]||'')+(D[Math.min(day-1,29)]||'');
+}
+
 function tidePower(extremes, dateStr) {
   // 依月相（農曆朔望）判斷大/中/小潮，與官方潮汐表一致
   // 大潮：朔（新月）、望（滿月）前後 ±2.5 天
@@ -1065,7 +1087,9 @@ async function updateWeatherBar(dk) {
   // 潮汐（本地諧波計算）+ 大/中/小潮
   if (tides && tides.length) {
     const power = tidePower(tides, dk);
+    const lunar = lunarDate(dk);
     let t = power ? power + ' &nbsp;' : '';
+    if (lunar) t += '<span style="color:#555;font-size:0.88em;font-weight:600">' + lunar + '</span> &nbsp;';
     for (const e of tides) {
       if (e.type === 'High') t += `<span class="wx-tide-hi">↑${e.time}</span> `;
       else                   t += `<span class="wx-tide-lo">↓${e.time}</span> `;
