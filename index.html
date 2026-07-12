@@ -558,9 +558,12 @@ function parseCertified(evt) {
       nitrox = /高氧[：:]\s*是/.test(line);
     } else if (line.startsWith('裝備：')) {
       equipment = expandEquip(line.replace('裝備：','').trim());
-    } else if (/^\d{3,}[/／][\d.]+[/／][\d.]+/.test(line)) {
-      const parts = line.replace(/\s.*/,'').split(/[/／]/);
-      if (parts.length >= 3) { height=parts[0]; weight=parts[1]; shoe=parts[2]; }
+    } else if (/^\d{3,}\s*[/／]/.test(line)) {
+      const norm = line.replace(/\s*[/／]\s*/g, '/');
+      const parts = norm.replace(/\s.*/,'').split('/').map(s=>s.replace(/[^\d.]/g,''));
+      if (parts.length >= 3 && parts[0] && parts[1] && parts[2]) {
+        height=parts[0]; weight=parts[1]; shoe=parts[2];
+      }
       const di = line.indexOf(' - ');
       if (di > -1) myopia = line.substring(di+3).trim().replace(/^\s*-\s*$/,'');
     } else if (/^6\/\d/.test(line) || /^\d{4}\/\d+\/\d+/.test(line)) {
@@ -579,9 +582,12 @@ function parseTryDive(evt) {
       lineId = line.replace(/^LINE?：/i,'').split(/[-－]/)[0].trim();
     } else if (/^[0-9\+][\d\s\-]{7,}$/.test(line.replace(/\s/,''))) {
       if (!phone) phone = line.replace(/\s/g,'');
-    } else if (/^\d{3,}[/／][\d.]+[/／][\d.]+/.test(line)) {
-      const parts = line.replace(/\s.*/,'').split(/[/／]/);
-      if (parts.length >= 3) { height=parts[0]; weight=parts[1]; shoe=parts[2]; }
+    } else if (/^\d{3,}\s*[/／]/.test(line)) {
+      const norm = line.replace(/\s*[/／]\s*/g, '/');
+      const parts = norm.replace(/\s.*/,'').split('/').map(s=>s.replace(/[^\d.]/g,''));
+      if (parts.length >= 3 && parts[0] && parts[1] && parts[2]) {
+        height=parts[0]; weight=parts[1]; shoe=parts[2];
+      }
       const di = line.indexOf(' - ');
       if (di > -1) myopia = line.substring(di+3).trim().replace(/^\s*-\s*$/,'');
     }
