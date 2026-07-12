@@ -401,7 +401,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC
   <button onclick="openSheet('tank-month')">🔵 氣瓶・當月</button>
   <button onclick="openSheet('equip-day')">🤿 裝備・當日</button>
   <button onclick="openSheet('equip-month')">🤿 裝備・當月</button>
-  <button onclick="openSheet('pax-month')">🧑‍🤿 人數・當月</button>
+  <button onclick="openSheet('pax-month')">👥 人數・當月</button>
 </div>
 
 <!-- LAYOUT -->
@@ -429,7 +429,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC
     </div>
     <div class="sb-divider"></div>
     <div class="sb-section">
-      <div class="sb-title">🧑‍🤿 人數統計</div>
+      <div class="sb-title">👥 人數統計</div>
       <div class="stat-period-label">當月</div>
       <div id="sbPaxMonth"><div class="placeholder-text">載入中…</div></div>
     </div>
@@ -1400,7 +1400,7 @@ function openSheet(type) {
     content.innerHTML = `<div class="sheet-title">🤿 裝備統計・${MONTHS[month]}月</div>` + document.getElementById('sbEquipMonth').innerHTML;
     document.getElementById('overlay').classList.add('open');
   } else if (type === 'pax-month') {
-    content.innerHTML = `<div class="sheet-title">🧑‍🤿 人數統計・${MONTHS[month]}月</div>` + document.getElementById('sbPaxMonth').innerHTML;
+    content.innerHTML = `<div class="sheet-title">👥 人數統計・${MONTHS[month]}月</div>` + document.getElementById('sbPaxMonth').innerHTML;
     document.getElementById('overlay').classList.add('open');
   }
 }
