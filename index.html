@@ -401,6 +401,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC
   <button onclick="openSheet('tank-month')">🔵 氣瓶・當月</button>
   <button onclick="openSheet('equip-day')">🤿 裝備・當日</button>
   <button onclick="openSheet('equip-month')">🤿 裝備・當月</button>
+  <button onclick="openSheet('pax-month')">🧑‍🤿 人數・當月</button>
 </div>
 
 <!-- LAYOUT -->
@@ -425,6 +426,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans TC
       <div id="sbEquipDay"><div class="placeholder-text">選擇日期後顯示</div></div>
       <div class="stat-period-label" style="margin-top:10px">當月</div>
       <div id="sbEquipMonth"><div class="placeholder-text">載入中…</div></div>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="sb-section">
+      <div class="sb-title">🧑‍🤿 人數統計</div>
+      <div class="stat-period-label">當月</div>
+      <div id="sbPaxMonth"><div class="placeholder-text">載入中…</div></div>
     </div>
   </div>
 </div>
@@ -1268,7 +1275,7 @@ function equipHtml(equipCount, emptyMsg) {
 function computeMonthStats(year, month) {
   const ck = `${year}-${month}`;
   const days = (cache[ck] && cache[ck].data) || {};
-  let nitrox=0, air=0;
+  let nitrox=0, air=0, shore=0, tryDive=0;
   const equip = {};
   for (const dk of Object.keys(days)) {
     const day = days[dk];
@@ -1276,13 +1283,24 @@ function computeMonthStats(year, month) {
     nitrox += calcBoatNitrox(day.boat);
     air    += day.certified.filter(d=>!d.nitrox).reduce((s,d)=>s+(d.tanks||0),0);
     air    += day.tryDive.reduce((s,d)=>s+(d.tanks||0),0);
+    shore   += day.certified.length;
+    tryDive += day.tryDive.length;
     for (const d of [...day.certified, ...day.tryDive]) {
       for (const e of (d.equipment||[])) {
         if (e) equip[e] = (equip[e]||0) + 1;
       }
     }
   }
-  return { nitrox, air, equip };
+  return { nitrox, air, equip, shore, tryDive };
+}
+
+function paxHtml(shore, tryDive) {
+  if (!shore && !tryDive) return '<div class="placeholder-text">本月無資料</div>';
+  return `<table class="equip-tbl">
+    <tr><td>🤿 岸潛</td><td>${shore} 人</td></tr>
+    <tr><td>🌊 體驗潛水</td><td>${tryDive} 人</td></tr>
+    <tr><td><strong>合計</strong></td><td><strong>${shore + tryDive} 人</strong></td></tr>
+  </table>`;
 }
 
 function updateSidebarStats(nitroxTanks, airTanks, equipCount) {
@@ -1295,6 +1313,7 @@ function updateSidebarStats(nitroxTanks, airTanks, equipCount) {
   const ms = computeMonthStats(y, m);
   document.getElementById('sbTankMonth').innerHTML  = tankHtml(ms.nitrox, ms.air);
   document.getElementById('sbEquipMonth').innerHTML = equipHtml(ms.equip, '本月無租借裝備');
+  document.getElementById('sbPaxMonth').innerHTML   = paxHtml(ms.shore, ms.tryDive);
 }
 
 // =========================================================
@@ -1379,6 +1398,9 @@ function openSheet(type) {
     document.getElementById('overlay').classList.add('open');
   } else if (type === 'equip-month') {
     content.innerHTML = `<div class="sheet-title">🤿 裝備統計・${MONTHS[month]}月</div>` + document.getElementById('sbEquipMonth').innerHTML;
+    document.getElementById('overlay').classList.add('open');
+  } else if (type === 'pax-month') {
+    content.innerHTML = `<div class="sheet-title">🧑‍🤿 人數統計・${MONTHS[month]}月</div>` + document.getElementById('sbPaxMonth').innerHTML;
     document.getElementById('overlay').classList.add('open');
   }
 }
