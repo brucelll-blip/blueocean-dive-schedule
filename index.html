@@ -1038,14 +1038,21 @@ function fetchTidesFor(dateStr) {
   return Promise.resolve(d);
 }
 
-function tidePower(extremes) {
-  if (!extremes || !extremes.length) return '';
-  const highs = extremes.filter(e=>e.type==='High').map(e=>parseFloat(e.h));
-  const lows  = extremes.filter(e=>e.type==='Low').map(e=>parseFloat(e.h));
-  if (!highs.length || !lows.length) return '';
-  const range = Math.max(...highs) - Math.min(...lows);
-  if (range >= 0.62) return '<span style="color:#c0392b;font-weight:800">大潮</span>';
-  if (range <= 0.32) return '<span style="color:#2980b9;font-weight:800">小潮</span>';
+function tidePower(extremes, dateStr) {
+  // 依月相（農曆朔望）判斷大/中/小潮，與官方潮汐表一致
+  // 大潮：朔（新月）、望（滿月）前後 ±2.5 天
+  // 小潮：上弦、下弦前後 ±1.5 天
+  const dt = dateStr ? new Date(dateStr + 'T12:00:00+08:00') : new Date();
+  const jd = _jd(dt);
+  const knownNM = 2451550.760; // 已知新月：2000-01-06 18:14 UTC
+  const syn = 29.53058867;     // 朔望月長度（天）
+  const age = ((jd - knownNM) % syn + syn) % syn; // 月齡 0–29.53
+  // 大潮：月齡 0-2.5、13.5-16（朔/望附近）
+  if (age <= 2.5 || age >= 27.0 || (age >= 13.5 && age <= 16.0))
+    return '<span style="color:#c0392b;font-weight:800">大潮</span>';
+  // 小潮：月齡 6.5-9.5、20.5-23.5（上弦/下弦附近）
+  if ((age >= 6.5 && age <= 9.5) || (age >= 20.5 && age <= 23.5))
+    return '<span style="color:#2980b9;font-weight:800">小潮</span>';
   return '<span style="color:#8e44ad;font-weight:800">中潮</span>';
 }
 
@@ -1057,7 +1064,7 @@ async function updateWeatherBar(dk) {
 
   // 潮汐（本地諧波計算）+ 大/中/小潮
   if (tides && tides.length) {
-    const power = tidePower(tides);
+    const power = tidePower(tides, dk);
     let t = power ? power + ' &nbsp;' : '';
     for (const e of tides) {
       if (e.type === 'High') t += `<span class="wx-tide-hi">↑${e.time}</span> `;
