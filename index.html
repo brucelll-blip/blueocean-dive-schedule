@@ -558,6 +558,8 @@ function parseCertified(evt) {
       nitrox = /高氧[：:]\s*是/.test(line);
     } else if (line.startsWith('裝備：')) {
       equipment = expandEquip(line.replace('裝備：','').trim());
+    } else if (!equipment.length && /蛙鞋|套鞋|防寒衣|面鏡|配重|B\.?C\.?D\.?|調節器|電腦錶|手電筒|浮力袋|呼吸管/.test(line) && !/^\d/.test(line) && !line.includes('/')) {
+      equipment = expandEquip(line.replace(/B\.C\.D\.?/gi,'BCD'));
     } else if (/^\d{3,}\s*[/／]/.test(line)) {
       const norm = line.replace(/\s*[/／]\s*/g, '/');
       const parts = norm.replace(/\s.*/,'').split('/').map(s=>s.replace(/[^\d.]/g,''));
